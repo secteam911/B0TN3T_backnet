@@ -1,5 +1,8 @@
+import os 
 import random
 import string
+import base64
+import onetimepass
 from datetime import datetime
 
 from flask_sqlalchemy import SQLAlchemy
@@ -57,3 +60,20 @@ class User(db.Model):
     salt = db.Column(db.String(100))
     last_login_time = db.Column(db.DateTime())
     last_login_ip = db.Column(db.String(100))
+
+    otp_secret = db.Column(db.String(16))
+
+    def __init__(self, **kwargs):
+        super(User, self).__init__(**kwargs)
+        if self.otp_secret is None:
+            # generate a random secret
+            self.otp_secret = base64.b32encode(os.urandom(10)).decode('utf-8')
+
+    # ...
+
+    def get_totp_uri(self):
+        return 'otpauth://totp/2FA-Demo:{0}?secret={1}&issuer=2FA-Demo' \
+            .format(self.username, self.otp_secret)
+
+    def verify_totp(self, token):
+        return onetimepass.valid_totp(token, self.otp_secret)
